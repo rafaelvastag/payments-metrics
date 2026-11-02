@@ -1,0 +1,42 @@
+# Só a observabilidade (Prometheus + Grafana). A aplicação roda no IntelliJ, na porta 8080.
+#
+#   docker compose -f docker-compose.local.yml up -d
+#
+# Depois, rode a aplicação pelo IntelliJ (configurações em .run/) e abra http://localhost:3000.
+services:
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    container_name: pagamentos-prometheus-local
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=2d
+      - --web.enable-lifecycle
+    volumes:
+      - ./observabilidade/prometheus/prometheus-local.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observabilidade/prometheus/alertas.yml:/etc/prometheus/alertas.yml:ro
+    extra_hosts:
+      # Necessário no Linux para host.docker.internal apontar para a máquina host.
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:12.1.0
+    container_name: pagamentos-grafana-local
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Editor
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/pagamentos.json
+    volumes:
+      - grafana-data-local:/var/lib/grafana
+      - ./observabilidade/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observabilidade/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+
+volumes:
+  grafana-data-local:

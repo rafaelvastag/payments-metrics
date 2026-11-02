@@ -1,0 +1,15 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="App - modo manual" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="br.com.exemplo.pagamentos.PagamentosMetricasApplication" />
+    <module name="pagamentos-metricas" />
+    <option name="VM_PARAMETERS" value="-Dspring.profiles.active=manual" />
+    <extension name="software.aws.toolkits.jetbrains.core.execution.JavaAwsConnectionExtension">
+      <option name="credential" />
+      <option name="region" />
+      <option name="useCurrentConnection" value="false" />
+    </extension>
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

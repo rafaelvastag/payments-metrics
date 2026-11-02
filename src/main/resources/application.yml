@@ -1,0 +1,70 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: pagamentos-metricas
+  threads:
+    virtual:
+      enabled: true   # requisições HTTP atendidas por virtual threads (Java 21)
+
+# ---------------------------------------------------------------------------------------------
+# Modo de geração de métricas
+# ---------------------------------------------------------------------------------------------
+simulador:
+  # true  -> MODO AUTOMÁTICO: o gerador de tráfego roda sozinho e o dashboard enche de dados.
+  #          Controle em tempo de execução: GET/PUT /simulador, POST /simulador/ligar|desligar.
+  # false -> MODO MANUAL: nada é gerado sozinho. Cada métrica é gerada sob demanda:
+  #            GET  /manual/cenarios               lista os cenários
+  #            POST /manual/cenarios/{id}          executa e mostra o que mudou (antes/depois)
+  #            GET  /manual/metricas               estado atual das métricas
+  #            POST /eventos                       evento livre, montado por você
+  #          (os endpoints /manual existem nos dois modos; no automático o diff inclui o tráfego gerado)
+  automatico: ${SIMULADOR_AUTOMATICO:true}
+  eventos-por-segundo: ${SIMULADOR_EPS:40}   # vazão do modo automático
+
+# ---------------------------------------------------------------------------------------------
+# Dependências simuladas (modo aleatório do Chaos). Alteráveis em tempo de execução: PUT /chaos
+# Nos cenários manuais só valem as latências e o timeout-ms; as taxas de erro são ignoradas.
+# ---------------------------------------------------------------------------------------------
+chaos:
+  db-latencia-ms: 15      # latência base do banco
+  sb-latencia-ms: 25      # latência base do envio ao Service Bus
+  db-taxa-erro: 0.01      # 1% de erro no banco
+  sb-taxa-erro: 0.015     # 1,5% de erro no envio
+  taxa-timeout: 0.003     # 0,3% de timeout em qualquer dependência
+  timeout-ms: 1500        # duração de um timeout
+
+# ---------------------------------------------------------------------------------------------
+# Actuator / Micrometer
+# ---------------------------------------------------------------------------------------------
+management:
+  endpoints:
+    web:
+      exposure:
+        # /actuator/prometheus é o endpoint coletado pelo Prometheus
+        include: health,info,prometheus,metrics
+  metrics:
+    # Tags comuns aplicadas a TODAS as métricas (não repetir em cada métrica no código)
+    tags:
+      application: ${spring.application.name}
+      env: ${AMBIENTE:local}
+    distribution:
+      # SLO buckets explícitos por métrica: geram o histograma (_bucket) com poucas séries e que
+      # agrega entre pods. Inclua o valor do SLO (aqui 250ms) para ler "% dentro do SLO" direto do bucket.
+      # Evitamos percentiles() (calculado no pod, não agrega) e publishPercentileHistogram (~70 buckets).
+      slo:
+        "[pagamento.evento.processamento]": 10ms,25ms,50ms,100ms,250ms,500ms,1s,2s,5s
+        "[pagamento.evento.espera_fila]": 10ms,50ms,100ms,500ms,1s,5s,30s,60s
+        "[pagamento.db.operacao]": 5ms,10ms,25ms,50ms,100ms,250ms,1s
+        "[pagamento.servicebus.envio]": 10ms,25ms,50ms,100ms,250ms,500ms,1s,2s
+      # Faixa esperada para todas as métricas "pagamento.*"
+      minimum-expected-value:
+        "[pagamento]": 1ms
+      maximum-expected-value:
+        "[pagamento]": 60s
+
+logging:
+  level:
+    # Os erros técnicos simulados geram muito log; deixamos só ERROR para o pacote de domínio.
+    br.com.exemplo.pagamentos.dominio: ERROR

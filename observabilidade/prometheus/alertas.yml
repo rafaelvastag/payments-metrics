@@ -1,0 +1,51 @@
+# Sugestões de alerta (base para a próxima história de SLO/alertas).
+groups:
+  - name: pagamentos
+    rules:
+      - alert: TaxaErroTecnicoAlta
+        expr: |
+          sum by (arranjo) (rate(pagamento_evento_processamento_seconds_count{outcome="error"}[5m]))
+            /
+          sum by (arranjo) (rate(pagamento_evento_processamento_seconds_count[5m])) > 0.05
+        for: 5m
+        labels: { severity: critical }
+        annotations:
+          summary: "Erro técnico acima de 5% no arranjo {{ $labels.arranjo }}"
+
+      - alert: LatenciaProcessamentoP95Alta
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le, arranjo) (rate(pagamento_evento_processamento_seconds_bucket[5m]))) > 0.5
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "p95 de processamento acima de 500ms em {{ $labels.arranjo }}"
+
+      - alert: BacklogNaFila
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le, arranjo) (rate(pagamento_evento_espera_fila_seconds_bucket[5m]))) > 5
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "Mensagens de {{ $labels.arranjo }} esperando mais de 5s na fila (p95)"
+
+      - alert: FalhaEnvioServiceBus
+        expr: sum by (destino) (rate(pagamento_servicebus_envio_seconds_count{outcome="error"}[5m])) > 0.1
+        for: 5m
+        labels: { severity: critical }
+        annotations:
+          summary: "Falhas de envio para a fila {{ $labels.destino }}"
+
+      - alert: SurtoTransicaoInvalida
+        expr: |
+          sum by (arranjo, estado_atual, status_evento) (increase(pagamento_transicao_invalida_total[10m])) > 50
+        labels: { severity: warning }
+        annotations:
+          summary: "Transição {{ $labels.estado_atual }} -> {{ $labels.status_evento }} ({{ $labels.arranjo }}) recusada com frequência"
+
+      - alert: EventosNaoMapeados
+        expr: sum by (motivo) (increase(pagamento_evento_nao_mapeado_total[10m])) > 0
+        labels: { severity: info }
+        annotations:
+          summary: "Eventos não mapeados: {{ $labels.motivo }}"

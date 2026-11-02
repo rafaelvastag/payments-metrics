@@ -1,0 +1,115 @@
+### ================= MODO MANUAL =================
+### Lista os cenários e o que observar em cada um
+GET http://localhost:8080/manual/cenarios
+
+### Ciclo completo com sucesso
+POST http://localhost:8080/manual/cenarios/fluxo-feliz?arranjo=PIX_DINAMICO
+
+### Transição inválida
+POST http://localhost:8080/manual/cenarios/transicao-invalida?arranjo=TED
+
+### Evento duplicado
+POST http://localhost:8080/manual/cenarios/evento-duplicado?arranjo=PIX_ESTATICO
+
+### Fora de ordem
+POST http://localhost:8080/manual/cenarios/fora-de-ordem?arranjo=TEF
+
+### Status desconhecido
+POST http://localhost:8080/manual/cenarios/status-desconhecido
+
+### Arranjo desconhecido
+POST http://localhost:8080/manual/cenarios/arranjo-desconhecido
+
+### Fluxo não suportado (antifraude em TED)
+POST http://localhost:8080/manual/cenarios/fluxo-nao-suportado?arranjo=TED
+
+### Payload inválido
+POST http://localhost:8080/manual/cenarios/payload-invalido
+
+### Reentrega
+POST http://localhost:8080/manual/cenarios/reentrega?arranjo=BOLETO
+
+### Backlog na fila (5s)
+POST http://localhost:8080/manual/cenarios/backlog-fila
+
+### Erro de banco
+POST http://localhost:8080/manual/cenarios/erro-banco
+
+### Timeout de banco
+POST http://localhost:8080/manual/cenarios/timeout-banco
+
+### Erro no Service Bus
+POST http://localhost:8080/manual/cenarios/erro-servicebus
+
+### Erro no Service Bus + reentrega (cascata)
+POST http://localhost:8080/manual/cenarios/erro-servicebus-com-reentrega
+
+### Timeout no Service Bus
+POST http://localhost:8080/manual/cenarios/timeout-servicebus
+
+### Falha ao gravar ocorrência
+POST http://localhost:8080/manual/cenarios/falha-gravar-ocorrencia?arranjo=PIX_AUTOMATICO
+
+### Estado atual das métricas (filtro opcional)
+GET http://localhost:8080/manual/metricas?nome=pagamento.db
+
+### ================= EVENTOS LIVRES =================
+### Evento feliz (cria a operação)
+POST http://localhost:8080/eventos
+Content-Type: application/json
+
+{ "operacaoId": "op-123", "arranjo": "PIX_DINAMICO", "status": "PAGAMENTO_INICIADO", "enqueuedTime": "2026-10-30T19:00:00Z", "deliveryCount": 1 }
+
+### Transição inválida (INICIADA -> PAGAMENTO_DEVOLVIDO) => 422 + ocorrência
+POST http://localhost:8080/eventos
+Content-Type: application/json
+
+{ "operacaoId": "op-123", "arranjo": "PIX_DINAMICO", "status": "PAGAMENTO_DEVOLVIDO", "deliveryCount": 1 }
+
+### Status não mapeado => 422
+POST http://localhost:8080/eventos
+Content-Type: application/json
+
+{ "operacaoId": "op-999", "arranjo": "TED", "status": "PAGAMENTO_AGENDADO" }
+
+### Fluxo não suportado (antifraude em BOLETO) => 422
+POST http://localhost:8080/eventos
+Content-Type: application/json
+
+{ "operacaoId": "op-998", "arranjo": "BOLETO", "status": "ANALISE_FRAUDE" }
+
+### Reentrega (deliveryCount > 1)
+POST http://localhost:8080/eventos
+Content-Type: application/json
+
+{ "operacaoId": "op-997", "arranjo": "TEF", "status": "PAGAMENTO_INICIADO", "deliveryCount": 3 }
+
+### ================= MODO AUTOMÁTICO (só com simulador.automatico=true) =================
+GET http://localhost:8080/simulador
+
+### Mais vazão + backlog de 3s na fila
+PUT http://localhost:8080/simulador?eventosPorSegundo=80&atrasoFilaMs=3000
+
+### Desligar / ligar
+POST http://localhost:8080/simulador/desligar
+
+###
+POST http://localhost:8080/simulador/ligar
+
+### ---------- Chaos: degradar Service Bus (20% de erro) ----------
+PUT http://localhost:8080/chaos
+Content-Type: application/json
+
+{ "dbLatenciaMs": 15, "sbLatenciaMs": 25, "dbTaxaErro": 0.01, "sbTaxaErro": 0.20, "taxaTimeout": 0.003, "timeoutMs": 1500 }
+
+### Chaos: banco lento (latência base 120ms)
+PUT http://localhost:8080/chaos
+Content-Type: application/json
+
+{ "dbLatenciaMs": 120, "sbLatenciaMs": 25, "dbTaxaErro": 0.01, "sbTaxaErro": 0.015, "taxaTimeout": 0.003, "timeoutMs": 1500 }
+
+### Voltar ao normal
+PUT http://localhost:8080/chaos
+Content-Type: application/json
+
+{ "dbLatenciaMs": 15, "sbLatenciaMs": 25, "dbTaxaErro": 0.01, "sbTaxaErro": 0.015, "taxaTimeout": 0.003, "timeoutMs": 1500 }

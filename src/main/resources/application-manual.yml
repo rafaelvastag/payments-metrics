@@ -1,0 +1,4 @@
+# Perfil "manual": desliga o gerador automático. Ative com spring.profiles.active=manual
+# (ou use a configuração "App - modo manual" do IntelliJ, em .run/).
+simulador:
+  automatico: false
